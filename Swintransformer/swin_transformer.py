@@ -8,11 +8,15 @@ from utils import create_mask
 
 
 class MultiLayerPerceptron(nn.Module):
-    def __init__(self, in_dim, hidden_dims, out_dim):
+    def __init__(self, in_dim, hidden_dims, out_dim, activation=None):
         super().__init__()
         self.in_dim = in_dim
         self.hidden_dims = hidden_dims
         self.out_dim = out_dim
+        if activation is None:
+            self.activation = nn.GELU()
+        else:
+            self.activation = activation
         assert self.hidden_dims is not None, "MLP requires 1 hidden dimension at least"
         if type(self.hidden_dims) == int:
             self.hidden_dims = [self.hidden_dims]
@@ -29,6 +33,7 @@ class MultiLayerPerceptron(nn.Module):
         if self.hidden is not None:
             for hid in self.hidden:
                 x = hid(x)
+        x = self.activation(x)
         return self.last(x)
 
 
@@ -56,8 +61,8 @@ class MultiheadSelfAttention(nn.Module):
         self.out_dim = out_dim
         
         self.pos_embedding = nn.Parameter(torch.randn(2 * self.window_size - 1, 2 * self.window_size - 1))
-        self.emb_index = torch.Tensor([list(range(-self.window_size // 2, -self.window_size // 2 + self.window_size)) for _ in range(self.window_size)])
-        self.emb_index += self.emb_index.permute(1, 0)
+        self.emb_index = torch.Tensor([list(range(-self.window_size // 2 + 1, -self.window_size // 2 + self.window_size + 1)) for _ in range(self.window_size)])
+        self.emb_index = self.emb_index.permute(1, 0) + self.emb_index
         self.emb_index = torch.Tensor(list(product(
             self.emb_index.view(-1), self.emb_index.view(-1)))).view(
                 self.window_size ** 2, self.window_size ** 2, 2)
